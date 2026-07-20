@@ -1,10 +1,14 @@
 import fastf1
+<<<<<<< HEAD
 # load session
+=======
+>>>>>>> c7165fca6641c731dc875ce464e90957090c3e24
 session = fastf1.get_session(2025, 13, "R" )
 session.load()
 lap = session.laps.pick_fastest()
 pos = lap.get_pos_data()
 
+<<<<<<< HEAD
 # get circuit info
 circuit_info = session.get_circuit_info()
 # print(circuit_info)
@@ -23,3 +27,11 @@ print(pia_laps["TrackStatus"])
 
 print(session.weather_data)
     
+=======
+circuit_info = session.get_circuit_info()
+print(circuit_info)
+session.load()
+print(session.laps.head(10))
+pia_laps = session.laps.pick_driver("Pia")
+print(pia_laps)
+>>>>>>> c7165fca6641c731dc875ce464e90957090c3e24
