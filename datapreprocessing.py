@@ -3,6 +3,20 @@ import numpy as np
 import fastf1
 
 all_data = []
+
+def fuel_burnoff(df, session):
+    fuel = 110
+    burn_constant = 0.03
+    race_laps = session.total_laps
+    
+    fuel_per_lap = fuel / race_laps
+    remaining_fuel = fuel - (fuel_per_lap * df["lapnumber"])
+    df["fuel_burnoff_laptime"] = df["laptime"] - (remaining_fuel * burn_constant)
+    df["sec1_burnoff"] = df["sec1"] - ((remaining_fuel * burn_constant)/3)
+    df["sec2_burnoff"] = df["sec2"] - ((remaining_fuel * burn_constant)/3)
+    df["sec3_burnoff"] = df["sec3"] - ((remaining_fuel * burn_constant)/3)
+    
+
 # looping through 2025-2022, inclusive, going through each race for each year to add to the dataframe
 
 # using a try-except block so as to handle errors happening when some races are not available
@@ -18,22 +32,40 @@ for year in range(4):
             weather = session.weather_data.copy()
 
             laps = laps[laps["IsAccurate"] == True]
-            laps = laps[laps["TrackStatus"] == 1]
+            laps = laps[laps["TrackStatus"] == "1"]
 
-            weather = weather[weather["Rainfall"] == False
+            weather = weather[weather["Rainfall"] == False]
                               
             # sort the data to be chronological, rather than starting over for each driver
-            # DO THIS LATER
+            laps = laps.sort_values(by="LapStartTime")
+            weather = weather.sort_values(by="Time")
 
-            df["eventname"] = session.event["EventName"]
-            df["stint"] = laps["Stint"]
-            df["tyreage"] = laps["TyreAge"]
-            df["laptime"] = laps["LapTime"]
-            df["sec1"] = laps["Sector1Time"]
-            df["sec2"] = laps["Sector2Time"]
-            df["sec3"] = laps["Sector3Time"]
-        
+            # put the lap and weather data in an order similar to one another 
+            lap_weather = pd.merge_asof(laps,weather,left_on="LapStartTime",right_on="Time",direction="backward")
+
+            df = pd.DataFrame()
+            df["eventname"] = [session.event["EventName"]] * len(lap_weather)  # so that every row for each lap for the race has event name
+            df["driver"] = lap_weather["Driver"]
+            df["compound"] = lap_weather["Compound"]
+            df["stint"] = lap_weather["Stint"]
+            df["tyrelife"] = lap_weather["TyreLife"]
+            df["lapnumber"] = lap_weather["LapNumber"]  # !!!
+            df["laptime"] = lap_weather["LapTime"].dt.total_seconds()
+            df["sec1"] = lap_weather["Sector1Time"].dt.total_seconds()
+            df["sec2"] = lap_weather["Sector2Time"].dt.total_seconds()
+            df["sec3"] = lap_weather["Sector3Time"].dt.total_seconds()
+            df["airtemp"] = lap_weather["AirTemp"]
+            df["tracktemp"] = lap_weather["TrackTemp"]
+            df = df.dropna(subset=["laptime", "sec1", "sec2", "sec3", "airtemp", "tracktemp"])  # so that it will drop rows that are missing critical info
             
+            if len(df)>0:
+                df = fuel_burnoff(df, session)
+                all_data.append(df)  
+
         except:
             print(f"{2025-year} {r} data not available")
             continue
+
+full_df = pd.concat(all_data, ignore_index=True)
+full_df.to_csv("full_data.csv", index=False)
+
