@@ -15,6 +15,8 @@ def fuel_burnoff(df, session):
     df["sec1_burnoff"] = df["sec1"] - ((remaining_fuel * burn_constant)/3)
     df["sec2_burnoff"] = df["sec2"] - ((remaining_fuel * burn_constant)/3)
     df["sec3_burnoff"] = df["sec3"] - ((remaining_fuel * burn_constant)/3)
+
+    return df
     
 
 # looping through 2025-2022, inclusive, going through each race for each year to add to the dataframe
