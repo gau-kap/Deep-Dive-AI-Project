@@ -60,8 +60,25 @@ for year in range(4):
             df["tracktemp"] = lap_weather["TrackTemp"]
             df = df.dropna(subset=["laptime", "sec1", "sec2", "sec3", "airtemp", "tracktemp"])  # so that it will drop rows that are missing critical info
             
+            # making sure the data is 5 or more rows in a stint
+            df = df[df.groupby(["driver", "stint"])["lapnumber"].transform("size") >= 5]
+
             if len(df)>0:
                 df = fuel_burnoff(df, session)
+                df["actual_pit_lap"] = df.groupby(["driver", "stint"])["lapnumber"].transform("max")  # to show when you start a new stint to use for prediction comparison
+                df["laps_until_pit"] = df["actual_pit_lap"] - df["lapnumber"]  # to show the lap on which each driver pitted
+                
+                # this down look at again
+                df["baseline_laptime"] = df.groupby(["driver", "stint"])["fuel_burnoff_laptime"].transform(lambda x: x.head(3).median())
+                df["baseline_sec1"] = df.groupby(["driver", "stint"])["sec1_burnoff"].transform(lambda x: x.head(3).median())
+                df["baseline_sec2"] = df.groupby(["driver", "stint"])["sec2_burnoff"].transform(lambda x: x.head(3).median())
+                df["baseline_sec3"] = df.groupby(["driver", "stint"])["sec3_burnoff"].transform(lambda x: x.head(3).median())
+                
+                df["laptime_delta"] = df["fuel_burnoff_laptime"] - df["baseline_laptime"]
+                df["sec1_delta"] = df["sec1_burnoff"] - df["baseline_sec1"]
+                df["sec2_delta"] = df["sec2_burnoff"] - df["baseline_sec2"]
+                df["sec3_delta"] = df["sec3_burnoff"] - df["baseline_sec3"]
+
                 all_data.append(df)  
 
         except:
@@ -70,4 +87,4 @@ for year in range(4):
 
 full_df = pd.concat(all_data, ignore_index=True)
 full_df.to_csv("full_data.csv", index=False)
-
+print("Data processing complete.")
